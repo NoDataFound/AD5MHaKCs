@@ -1,77 +1,72 @@
-<p align="center">
-  <img src="docs/logo.png" alt="VantaCode" width="420" />
-</p>
+# AD5MHaKCs
 
-<h1 align="center">Project Name</h1>
+Single-purpose USB maker for the [Forge-X](https://github.com/DrA1ex/ff5m) firmware mod on the **Flashforge Adventurer 5M (non-Pro)**.
 
-<p align="center"><strong>One-line description of what this project does.</strong></p>
+## What it does
 
-<p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
-  <a href="https://github.com/vantacode/perfect-repo-template/actions/workflows/ci.yml"><img src="https://github.com/vantacode/perfect-repo-template/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/vantacode/perfect-repo-template/actions/workflows/security.yml"><img src="https://github.com/vantacode/perfect-repo-template/actions/workflows/security.yml/badge.svg" alt="Security"></a>
-</p>
+`forgex-usb.sh` stages a FAT32 USB that the printer reads at power-on to flash itself.
 
----
+1. Queries the GitHub releases API for `DrA1ex/ff5m` (no hardcoded versions).
+2. Downloads the non-Pro image (`Adventurer5M-ForgeX-<ver>.tgz`). Does not unpack it.
+3. Verifies the SHA-256 against the publisher's asset digest. Aborts on mismatch.
+4. Erases the chosen USB and creates a fresh FAT32 partition labeled `FORGEX`.
+5. Copies the image to the USB as `Adventurer5M-ForgeX-<ver>.tgz`.
 
-## Table of Contents
+## What it does NOT do
 
-- [About](#about)
-- [Prerequisites](#prerequisites)
-- [Install](#install)
-- [Usage](#usage)
-- [Architecture](#architecture)
-- [Contributing](#contributing)
-- [Security](#security)
-- [License](#license)
-- [Author](#author)
-
-## About
-
-<!-- Replace with your project description -->
-This is a template repository implementing 100% governance compliance. Every file, workflow, and configuration follows the GitHub Operational Readiness Checklist.
+- Does **not** flash the printer. The printer self-installs the image at power-on.
+- Does **not** talk to the printer over USB or serial.
+- Does **not** auto-select a target disk. You pass `--device` or pick interactively.
+- Does **not** touch the system / boot disk.
+- Does **not** install missing system packages.
 
 ## Prerequisites
 
-- **Node.js 22+** (or your runtime)
-- **pnpm 9+** (or your package manager)
+- **Printer stock firmware must be 2.6.5 - 3.1.5.** Downgrade first if needed.
+- A USB flash drive you are willing to erase.
+- macOS, **or** Linux with `dosfstools` + `util-linux` (`mkfs.vfat`, `wipefs`, `sfdisk`).
+- `curl` and a SHA-256 tool (`shasum` on macOS, `sha256sum` on Linux). The script checks and fails clearly if anything is missing.
 
-## Install
+### Fedora Silverblue note
 
-```bash
-git clone https://github.com/your-org/your-repo.git
-cd your-repo
-pnpm install
-```
+Silverblue is immutable and usually ships without `dosfstools`. The script will **not** run `rpm-ostree install` for you (it needs a reboot). It detects Silverblue, prints a message, and exits without touching anything. Options:
+
+- Run the script inside a `toolbox` / `distrobox` that has `dosfstools` + `util-linux`, with the USB device accessible.
+- Layer the packages and reboot:
+  ```
+  rpm-ostree install dosfstools util-linux
+  systemctl reboot
+  ```
 
 ## Usage
 
-```bash
-pnpm dev     # Start development server
-pnpm test    # Run tests
-pnpm build   # Build for production
-pnpm lint    # Lint code
+```
+sudo ./forgex-usb.sh --list                       # show candidate USB devices
+sudo ./forgex-usb.sh --device /dev/sdb            # Linux example, latest stable
+sudo ./forgex-usb.sh --device /dev/disk4          # macOS example, latest stable
+sudo ./forgex-usb.sh --tag 1.4.1 --device /dev/sdb
+./forgex-usb.sh --help
 ```
 
-## Architecture
+Flags:
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed architecture documentation.
+| Flag | Meaning |
+|---|---|
+| `--tag <ver>` | Pin a release tag. Default: latest stable. |
+| `--device <path>` | Target removable device. If omitted, candidates are shown and you are prompted. |
+| `--list` | List candidate removable devices and exit. |
+| `--help` | Show help. |
 
-## Contributing
+The script requires you to type `ERASE` before it formats anything.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+## On the printer
 
-## Security
-
-See [.github/SECURITY.md](.github/SECURITY.md) for our security policy.
+1. Confirm stock firmware is 2.6.5 - 3.1.5.
+2. Power the printer **off**.
+3. Insert the staged USB.
+4. Power **on**. The printer auto-installs from the USB; wait for the completion message.
+5. Eject the USB and reboot the printer.
 
 ## License
 
-[MIT](LICENSE) - Copyright (c) <year> <your name or org>
-
-## Author
-
-**[your name here]** / [your org]
-
-- GitHub: [@your-handle](https://github.com/your-handle)
-- Contact: see [SECURITY.md](.github/SECURITY.md) and [SUPPORT.md](.github/SUPPORT.md)
+[MIT](LICENSE).
