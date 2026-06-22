@@ -32,7 +32,7 @@ Flags:
 
 The script stages a FAT32 USB only. The printer flashes itself on next
 power-on when the USB is inserted before power. Prerequisite: stock
-firmware 2.6.5 - 3.1.5.
+firmware 2.6.5 - 5.1.x (5.1.2-5.1.7 verified).
 EOF
 }
 
@@ -357,7 +357,7 @@ Done. USB labeled $LABEL contains:
   $RENAMED  ($VER)
 
 On the printer:
-  1. Stock firmware MUST be 2.6.5 - 3.1.5. Confirm before continuing.
+  1. Stock firmware MUST be 2.6.5 - 5.1.x (5.1.2-5.1.7 verified). Confirm before continuing.
   2. Power the printer OFF.
   3. Insert the USB drive.
   4. Power the printer ON. It will auto-install the update; wait for the

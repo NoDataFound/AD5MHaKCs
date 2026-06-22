@@ -21,7 +21,7 @@ Single-purpose USB maker for the [Forge-X](https://github.com/DrA1ex/ff5m) firmw
 
 ## Prerequisites
 
-- **Printer stock firmware must be 2.6.5 - 3.1.5.** Downgrade first if needed.
+- **Printer stock firmware must be 2.6.5 - 5.1.x (5.1.2-5.1.7 verified).** Downgrade first if needed.
 - A USB flash drive you are willing to erase.
 - macOS, **or** Linux with `dosfstools` + `util-linux`.
 
@@ -55,7 +55,7 @@ The script requires you to type `ERASE` before it formats anything.
 
 ## On the printer
 
-1. Confirm stock firmware is 2.6.5 - 3.1.5.
+1. Confirm stock firmware is 2.6.5 - 5.1.x (5.1.2-5.1.7 verified).
 2. Power the printer **off**.
 3. Insert the staged USB.
 4. Power **on**. The printer auto-installs from the USB; wait for the completion message.
