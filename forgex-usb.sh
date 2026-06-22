@@ -12,19 +12,22 @@ LABEL="FORGEX"
 TAG=""
 DEVICE=""
 LIST=0
+AUTO_INSTALL=1   # install missing deps by default; --no-install to opt out
 
 usage() {
   cat <<'EOF'
 forgex-usb.sh — make a Forge-X flash USB for Flashforge Adventurer 5M (non-Pro)
 
 Usage:
-  forgex-usb.sh [--tag <version>] [--device <path>] [--list] [--help]
+  forgex-usb.sh [--tag <version>] [--device <path>] [--list]
+                [--no-install] [--help]
 
 Flags:
   --tag <version>   Pin a release tag (e.g. 1.4.1). Default: latest stable.
   --device <path>   Target removable device (e.g. /dev/sdb, /dev/disk4).
                     Omit to be shown candidates and prompted interactively.
   --list            List candidate removable devices and exit.
+  --no-install      Do not auto-install missing deps; fail with a message.
   --help            Show this help.
 
 The script stages a FAT32 USB only. The printer flashes itself on next
@@ -35,10 +38,11 @@ EOF
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --tag)    TAG="${2:?missing value for --tag}"; shift 2 ;;
-    --device) DEVICE="${2:?missing value for --device}"; shift 2 ;;
-    --list)   LIST=1; shift ;;
-    --help|-h) usage; exit 0 ;;
+    --tag)        TAG="${2:?missing value for --tag}"; shift 2 ;;
+    --device)     DEVICE="${2:?missing value for --device}"; shift 2 ;;
+    --list)       LIST=1; shift ;;
+    --no-install) AUTO_INSTALL=0; shift ;;
+    --help|-h)    usage; exit 0 ;;
     *) echo "unknown flag: $1" >&2; usage >&2; exit 2 ;;
   esac
 done
@@ -59,40 +63,114 @@ case "$OS" in
   *) echo "Unsupported OS: $OS (macOS or Linux only)." >&2; exit 1 ;;
 esac
 
-need() { command -v "$1" >/dev/null 2>&1 || { echo "missing dep: $1" >&2; return 1; }; }
+have() { command -v "$1" >/dev/null 2>&1; }
 
-need curl
+SUDO=""
+if [ "$(id -u)" != 0 ]; then
+  if have sudo; then SUDO="sudo"; fi
+fi
+
+# Map a missing binary -> package name for a given pkg manager.
+# Args: $1 binary, $2 pkg-mgr key. Echoes the package or empty.
+pkg_for() {
+  case "$2:$1" in
+    apt:mkfs.vfat|dnf:mkfs.vfat|yum:mkfs.vfat|pacman:mkfs.vfat|zypper:mkfs.vfat|apk:mkfs.vfat|rpm-ostree:mkfs.vfat) echo dosfstools ;;
+    apt:wipefs|apt:sfdisk|apt:findmnt|apt:lsblk|apt:mount|apt:umount) echo util-linux ;;
+    dnf:wipefs|dnf:sfdisk|dnf:findmnt|dnf:lsblk|dnf:mount|dnf:umount) echo util-linux ;;
+    yum:wipefs|yum:sfdisk|yum:findmnt|yum:lsblk|yum:mount|yum:umount) echo util-linux ;;
+    rpm-ostree:wipefs|rpm-ostree:sfdisk|rpm-ostree:findmnt|rpm-ostree:lsblk|rpm-ostree:mount|rpm-ostree:umount) echo util-linux ;;
+    zypper:wipefs|zypper:sfdisk|zypper:findmnt|zypper:lsblk|zypper:mount|zypper:umount) echo util-linux ;;
+    pacman:wipefs|pacman:sfdisk|pacman:findmnt|pacman:lsblk|pacman:mount|pacman:umount) echo util-linux ;;
+    apk:wipefs|apk:sfdisk|apk:findmnt|apk:lsblk|apk:mount|apk:umount) echo util-linux ;;
+    *:curl)      echo curl ;;
+    *:sha256sum) echo coreutils ;;
+    *) echo "" ;;
+  esac
+}
+
+detect_pm() {
+  if [ "$SILVERBLUE" = 1 ] && have rpm-ostree; then echo rpm-ostree; return; fi
+  for pm in apt dnf yum pacman zypper apk; do
+    have "$pm" && { echo "$pm"; return; }
+  done
+  echo ""
+}
+
+install_pkgs() {
+  local pm="$1"; shift
+  [ $# -gt 0 ] || return 0
+  case "$pm" in
+    apt)        $SUDO apt-get update -y && $SUDO apt-get install -y "$@" ;;
+    dnf|yum)    $SUDO "$pm" install -y "$@" ;;
+    pacman)     $SUDO pacman -Sy --noconfirm "$@" ;;
+    zypper)     $SUDO zypper --non-interactive install "$@" ;;
+    apk)        $SUDO apk add --no-cache "$@" ;;
+    rpm-ostree) $SUDO rpm-ostree install -y "$@" ;;
+    *) return 1 ;;
+  esac
+}
+
+ensure_deps() {
+  local needed=("$@")
+  local missing=()
+  for b in "${needed[@]}"; do have "$b" || missing+=("$b"); done
+  [ ${#missing[@]} -eq 0 ] && return 0
+
+  if [ "$AUTO_INSTALL" = 0 ]; then
+    echo "missing dep(s): ${missing[*]} (re-run without --no-install or install manually)" >&2
+    return 1
+  fi
+
+  if [ "$PLATFORM" = macos ]; then
+    echo "missing dep(s) on macOS: ${missing[*]}" >&2
+    echo "These ship with macOS; verify your PATH or Xcode Command Line Tools." >&2
+    return 1
+  fi
+
+  local pm; pm="$(detect_pm)"
+  if [ -z "$pm" ]; then
+    echo "missing dep(s): ${missing[*]} and no supported package manager found" >&2
+    return 1
+  fi
+
+  local pkgs=() seen=""
+  for b in "${missing[@]}"; do
+    local p; p="$(pkg_for "$b" "$pm")"
+    [ -n "$p" ] || { echo "no package mapping for '$b' on $pm" >&2; return 1; }
+    case " $seen " in *" $p "*) ;; *) pkgs+=("$p"); seen="$seen $p" ;; esac
+  done
+
+  echo "Missing: ${missing[*]}"
+  echo "Will install via $pm: ${pkgs[*]}"
+  if [ "$pm" = rpm-ostree ]; then
+    cat <<EOF
+NOTE: Silverblue/rpm-ostree layers packages and requires a reboot before
+they are visible. After install, reboot and re-run this script.
+Alternative (no reboot): run this script inside a toolbox/distrobox.
+EOF
+  fi
+  printf "Proceed? [y/N]: "
+  local ans; read -r ans </dev/tty
+  case "$ans" in y|Y|yes|YES) ;; *) echo "Aborted."; return 1 ;; esac
+
+  install_pkgs "$pm" "${pkgs[@]}" || { echo "package install failed" >&2; return 1; }
+
+  if [ "$pm" = rpm-ostree ]; then
+    echo "Packages layered. Reboot then re-run: systemctl reboot"
+    exit 0
+  fi
+
+  # Re-check
+  for b in "${missing[@]}"; do
+    have "$b" || { echo "'$b' still missing after install" >&2; return 1; }
+  done
+}
 
 if [ "$PLATFORM" = macos ]; then
-  need diskutil
-  need shasum
+  ensure_deps curl shasum diskutil
   sha256_of() { shasum -a 256 "$1" | awk '{print $1}'; }
 else
-  need lsblk
-  need findmnt
-  need sha256sum
-  MISSING=""
-  for t in mkfs.vfat wipefs sfdisk mount umount; do
-    command -v "$t" >/dev/null 2>&1 || MISSING="$MISSING $t"
-  done
-  if [ -n "$MISSING" ]; then
-    if [ "$SILVERBLUE" = 1 ]; then
-      cat >&2 <<EOF
-Silverblue detected. Missing disk tools:$MISSING
-This script will NOT run \`rpm-ostree install\` for you (it requires a reboot).
-Choose one:
-  1. Run this script inside a toolbox / distrobox container that has
-     dosfstools and util-linux installed, with the USB device available.
-  2. Layer the packages on the host yourself, reboot, then re-run:
-       rpm-ostree install dosfstools util-linux
-       systemctl reboot
-No changes were made.
-EOF
-      exit 1
-    fi
-    echo "missing dep(s):$MISSING (install dosfstools and util-linux)" >&2
-    exit 1
-  fi
+  ensure_deps curl sha256sum lsblk findmnt mkfs.vfat wipefs sfdisk mount umount
   sha256_of() { sha256sum "$1" | awk '{print $1}'; }
 fi
 

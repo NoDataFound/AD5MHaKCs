@@ -18,25 +18,18 @@ Single-purpose USB maker for the [Forge-X](https://github.com/DrA1ex/ff5m) firmw
 - Does **not** talk to the printer over USB or serial.
 - Does **not** auto-select a target disk. You pass `--device` or pick interactively.
 - Does **not** touch the system / boot disk.
-- Does **not** install missing system packages.
 
 ## Prerequisites
 
 - **Printer stock firmware must be 2.6.5 - 3.1.5.** Downgrade first if needed.
 - A USB flash drive you are willing to erase.
-- macOS, **or** Linux with `dosfstools` + `util-linux` (`mkfs.vfat`, `wipefs`, `sfdisk`).
-- `curl` and a SHA-256 tool (`shasum` on macOS, `sha256sum` on Linux). The script checks and fails clearly if anything is missing.
+- macOS, **or** Linux with `dosfstools` + `util-linux`.
+
+If any tool is missing on Linux, the script will offer to install it via your package manager (`apt`, `dnf`, `yum`, `pacman`, `zypper`, `apk`, or `rpm-ostree`) and prompts before doing so. Use `--no-install` to disable this and fail instead.
 
 ### Fedora Silverblue note
 
-Silverblue is immutable and usually ships without `dosfstools`. The script will **not** run `rpm-ostree install` for you (it needs a reboot). It detects Silverblue, prints a message, and exits without touching anything. Options:
-
-- Run the script inside a `toolbox` / `distrobox` that has `dosfstools` + `util-linux`, with the USB device accessible.
-- Layer the packages and reboot:
-  ```
-  rpm-ostree install dosfstools util-linux
-  systemctl reboot
-  ```
+Silverblue is immutable. If `dosfstools` is missing, the script will offer to layer it with `rpm-ostree install dosfstools util-linux`, but the layered packages only become available **after a reboot**, so the script then exits and you must re-run it after `systemctl reboot`. No reboot needed if you instead run the script inside a `toolbox` / `distrobox` that already has the tools.
 
 ## Usage
 
@@ -55,6 +48,7 @@ Flags:
 | `--tag <ver>` | Pin a release tag. Default: latest stable. |
 | `--device <path>` | Target removable device. If omitted, candidates are shown and you are prompted. |
 | `--list` | List candidate removable devices and exit. |
+| `--no-install` | Do not auto-install missing deps; fail with a message. |
 | `--help` | Show help. |
 
 The script requires you to type `ERASE` before it formats anything.
