@@ -1,0 +1,54 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# This template ships docs, governance files, and workflows -- no
+# language code yet. CI validates the artifacts that DO exist:
+#   - Markdown lint (docs hygiene)
+#   - YAML lint (workflows + dependabot config)
+#   - actionlint (workflow correctness)
+# When you add source code, replace or extend these jobs with your
+# real build/test/lint pipeline.
+
+jobs:
+  markdown:
+    name: Markdown lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: markdownlint
+        uses: DavidAnson/markdownlint-cli2-action@v16
+        with:
+          globs: |
+            **/*.md
+            !**/node_modules/**
+
+  yaml:
+    name: YAML lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: yamllint
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          file_or_dir: .github .vantacode.yaml CITATION.cff
+          config_data: |
+            extends: relaxed
+            rules:
+              line-length: disable
+              truthy: disable
+              document-start: disable
+
+  actions:
+    name: actionlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: actionlint
+        uses: raven-actions/actionlint@v2

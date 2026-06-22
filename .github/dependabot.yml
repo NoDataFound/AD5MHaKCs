@@ -1,0 +1,55 @@
+version: 2
+updates:
+  # This template only ships GitHub Actions workflows. Once you add
+  # a language manifest (package.json, requirements.txt, go.mod,
+  # Dockerfile, etc.), uncomment the matching block below.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"
+      - "github-actions"
+
+  # - package-ecosystem: "npm"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #   commit-message:
+  #     prefix: "chore"
+  #   labels:
+  #     - "dependencies"
+  #     - "npm"
+  #   open-pull-requests-limit: 10
+
+  # - package-ecosystem: "pip"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #   commit-message:
+  #     prefix: "chore"
+  #   labels:
+  #     - "dependencies"
+  #     - "python"
+
+  # - package-ecosystem: "docker"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #   commit-message:
+  #     prefix: "chore"
+  #   labels:
+  #     - "dependencies"
+  #     - "docker"
+
+  # - package-ecosystem: "gomod"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #   commit-message:
+  #     prefix: "chore"
+  #   labels:
+  #     - "dependencies"
+  #     - "go"

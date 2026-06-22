@@ -1,0 +1,32 @@
+name: Security
+
+# CodeQL requires GitHub Advanced Security on private repos. Until this
+# template ships actual code AND the consuming repo enables GHAS, the
+# scan is gated to manual dispatch so it does not block PRs with a
+# configuration error. To enable on a public fork, switch the trigger
+# back to push/pull_request and (optionally) add a weekly schedule.
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  codeql:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+      - uses: github/codeql-action/autobuild@v3
+      - uses: github/codeql-action/analyze@v3
+
+  dependency-review:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4

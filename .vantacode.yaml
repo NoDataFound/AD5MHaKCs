@@ -1,0 +1,13 @@
+vantacode:
+  version: 1
+  tags:
+    - "vantacode:domain:category=\"governance-compliance\""
+    - "vantacode:status:lifecycle=\"active\""
+    - "vantacode:sensitivity:classification=\"public\""
+    - "vantacode:governance:documentation=\"full\""
+    - "vantacode:governance:branch-protection=\"full\""
+    - "vantacode:governance:ci-cd=\"full\""
+    - "vantacode:governance:security=\"full\""
+    - "vantacode:governance:code-quality=\"full\""
+  team: "<your-team>"
+  contact: "<your-contact>"

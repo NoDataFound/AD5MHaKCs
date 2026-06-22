@@ -1,0 +1,8 @@
+# CODEOWNERS — assign default reviewers for everything in this repo.
+# Replace the placeholder below with your team or user handles.
+# Format: <pattern> <owner1> <owner2> ...
+# Examples:
+#   *                    @your-org/maintainers
+#   /docs/               @your-org/docs
+#   /.github/workflows/  @your-org/devops
+* @<owner>
